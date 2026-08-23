@@ -41,3 +41,27 @@ async def add_new_task(task_title: str = Body()):
     if not task_title: raise HTTPException(status_code=400, detail={"error" : "task title is missing/null"})
     TASKS.append({"id": len(TASKS)+1, "title": task_title, "done": False})
 
+
+@app.put("/tasks/:id",status_code=status.HTTP_200_OK)
+async def update_title_by_id(id: int, new_title: str = Body()):
+    id_found: bool=False
+    if not new_title: raise HTTPException(status_code=400, detail={"error": "task title is missing/null"})
+    for task in TASKS:
+        if task["id"]==id:
+            task["title"]=new_title
+            updated_task=task
+            id_found=True
+    if id_found==False: raise HTTPException(status_code=404,detail={"error":"Invalid id"})
+    return updated_task
+
+
+@app.delete("/tasks/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task_by_id(id: int):
+    id_found: bool = False
+    for task in TASKS:
+        if task["id"]==id:
+            task.clear()
+            id_found=True
+    if id_found==False: raise HTTPException(status_code=404, detail={"error": "Invalid id"})
+
+
