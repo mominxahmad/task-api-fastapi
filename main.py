@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Body, HTTPException, status
 
 
 app = FastAPI()
@@ -34,3 +34,10 @@ async def task_by_id(id: int):
             tasks_to_return.append(task)
     if not tasks_to_return: raise HTTPException(status_code=404, detail={"error": f"task {id} not found"})
     return tasks_to_return
+
+
+@app.post("/tasks", status_code=status.HTTP_201_CREATED)
+async def add_new_task(task_title: str = Body()):
+    if not task_title: raise HTTPException(status_code=400, detail={"error" : "task title is missing/null"})
+    TASKS.append({"id": len(TASKS)+1, "title": task_title, "done": False})
+
