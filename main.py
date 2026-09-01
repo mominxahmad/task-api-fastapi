@@ -61,11 +61,20 @@ check_db()
 async def api_root():
     return {"name" : "Task API", "version" : "2.0", "endpoints" : ["/tasks"]}
 
+
 @app.get("/health")
 async def health_check():
     return {"status" : "ok"}
+
 
 @app.get("/tasks")
 async def all_tasks(db: db_dependency_injection):
     return db.query(Tasks).all()
 
+
+@app.get("/tasks/{id}")
+async def task_by_id(db:db_dependency_injection, id: int = Path(gt=0)):
+    task_to_return = db.query(Tasks).filter(Tasks.id==id).first()
+    if task_to_return is None:
+        raise HTTPException(status_code=404, detail={"error": f"Task {id} not found"})
+    return task_to_return
