@@ -1,67 +1,71 @@
-from fastapi import FastAPI, Body, HTTPException, status
+from sqlalchemy import create_engine,Column,Integer,String,Boolean
+from sqlalchemy.orm import sessionmaker,Session
+from sqlalchemy.ext.declarative import declarative_base
+from typing import Annotated
+from fastapi import FastAPI,Depends,HTTPException,Path,Query
+from starlette import status
 
 
-app = FastAPI()
+#DB CONFIG
+DB_URL = "sqlite:///./tasks.db"
+engine = create_engine(DB_URL,connect_args={"check_same_thread":False})
+SessionLocal = sessionmaker(engine,autocommit=False,autoflush=False)
+Base = declarative_base()
 
 
-TASKS = [
-    {"id" : 1, "title" : "Do grocery", "done" : False},
-    {"id" : 2, "title" : "Wash helmet padding", "done" : True},
-    {"id" : 3, "title" : "Buy a birthday gift for Ali", "done" : False},
-]
+#DB MODELS SETUP
+class Tasks(Base):
+    __tablename__ = "tasks"
+    id = Column(Integer,primary_key=True,index=True)
+    title = Column(String,nullable=False)
+    done = Column(Boolean,default=False)
 
 
+#FASTAPI APP
+app = FastAPI(title="Tasks To-do List")
+
+
+#AUTO-CREATE DB
+Base.metadata.create_all(bind=engine)
+
+
+#DEPENDENCY INJECTION CONFIG.
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+db_dependency_injection = Annotated[Session,Depends(get_db)]
+
+
+#AUTO-INSERTING SAMPLE ROWS IF DB EMPTY
+def check_db():  #FastAPI resolves Depends() when it calls path operation so cant use dependency-injection
+    db = SessionLocal()  #This func runs at app startup so must create session directly
+    try:
+        counter = db.query(Tasks).count()
+        if counter == 0:
+            task1 = Tasks(title="Do grocery")
+            task2 = Tasks(title="Wash helmet padding",done=True)
+            task3 = Tasks(title="Buy a birthday gift for Ali")
+            db.add_all([task1,task2,task3])
+            db.commit()
+    finally:
+        db.close()
+
+check_db()
+
+#===================ENDPOINTS==================================================
 @app.get("/")
 async def api_root():
-    return {"name" : "Task API", "version" : "1.0", "endpoints" : ["/tasks"]}
-
+    return {"name" : "Task API", "version" : "2.0", "endpoints" : ["/tasks"]}
 
 @app.get("/health")
 async def health_check():
     return {"status" : "ok"}
 
-
 @app.get("/tasks")
-async def all_tasks():
-    return TASKS
-
-
-@app.get("/tasks/{id}")
-async def task_by_id(id: int):
-    tasks_to_return=[]
-    for task in TASKS:
-        if task["id"]==id:
-            tasks_to_return.append(task)
-    if not tasks_to_return: raise HTTPException(status_code=404, detail={"error": f"task {id} not found"})
-    return tasks_to_return
-
-
-@app.post("/tasks", status_code=status.HTTP_201_CREATED)
-async def add_new_task(task_title: str = Body()):
-    if not task_title: raise HTTPException(status_code=400, detail={"error" : "task title is missing/null"})
-    TASKS.append({"id": len(TASKS)+1, "title": task_title, "done": False})
-
-
-@app.put("/tasks/:id",status_code=status.HTTP_200_OK)
-async def update_title_by_id(id: int, new_title: str = Body()):
-    id_found: bool=False
-    if not new_title: raise HTTPException(status_code=400, detail={"error": "task title is missing/null"})
-    for task in TASKS:
-        if task["id"]==id:
-            task["title"]=new_title
-            updated_task=task
-            id_found=True
-    if id_found==False: raise HTTPException(status_code=404,detail={"error":"Invalid id"})
-    return updated_task
-
-
-@app.delete("/tasks/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_task_by_id(id: int):
-    id_found: bool = False
-    for task in TASKS:
-        if task["id"]==id:
-            task.clear()
-            id_found=True
-    if id_found==False: raise HTTPException(status_code=404, detail={"error": "Invalid id"})
-
+async def all_tasks(db: db_dependency_injection):
+    return db.query(Tasks).all()
 
