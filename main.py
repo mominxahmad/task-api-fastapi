@@ -116,3 +116,4 @@ async def delete_task_by_id(db:db_dependency_injection, id: int = Path(gt=0)):
     db.query(Tasks).filter(Tasks.id == id).delete()
     db.commit()
 
+#played around with the db in db-browser using sql queries
