@@ -94,25 +94,27 @@ async def add_new_task(db: db_dependency_injection, task_title: TaskRequests):
     new_task = Tasks(**task_title.model_dump())
     db.add(new_task)
     db.commit()
+    db.refresh(new_task)
+    return new_task
 
 
 @app.put("/tasks/{id}",status_code=status.HTTP_200_OK)
 async def update_title_by_id(db: db_dependency_injection, updated_task: TaskRequests,id: int = Path(gt=0), ):
     task_to_update = db.query(Tasks).filter(Tasks.id==id).first()
-    if not task_to_update: raise HTTPException(status_code=404,detail={"error": "Task {id} not found"})
+    if not task_to_update: raise HTTPException(status_code=404,detail={"error": f"Task {id} not found"})
     if not updated_task.title: raise HTTPException(status_code=400, detail={"error": "Task Title is Missing/Null"})
     task_to_update.title = updated_task.title
     task_to_update.done = updated_task.done
     db.add(task_to_update)
     db.commit()
-
-    return db.query(Tasks).filter(Tasks.id==id).first()
+    db.refresh(task_to_update)
+    return task_to_update
 
 
 @app.delete("/tasks/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task_by_id(db:db_dependency_injection, id: int = Path(gt=0)):
     task_to_delete = db.query(Tasks).filter(Tasks.id==id).first()
-    if not task_to_delete: raise HTTPException(status_code=404,detail={"error": "Task {id} not found"})
+    if not task_to_delete: raise HTTPException(status_code=404,detail={"error": f"Task {id} not found"})
     db.query(Tasks).filter(Tasks.id == id).delete()
     db.commit()
 
