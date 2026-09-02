@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from typing import Annotated
 from fastapi import FastAPI,Depends,HTTPException,Path,Query
 from starlette import status
-
+from pydantic import BaseModel, Field
 
 #DB CONFIG
 DB_URL = "sqlite:///./tasks.db"
@@ -56,6 +56,14 @@ def check_db():  #FastAPI resolves Depends() when it calls path operation so can
 
 check_db()
 
+
+#REQUEST VALIDATION WITH PYDANTIC
+class TaskRequests(BaseModel):
+    #id auto-assigned
+    title: str = Field(examples=["Task Name"])
+    done: bool = Field(default=False)
+
+
 #===================ENDPOINTS==================================================
 @app.get("/")
 async def api_root():
@@ -78,3 +86,11 @@ async def task_by_id(db:db_dependency_injection, id: int = Path(gt=0)):
     if task_to_return is None:
         raise HTTPException(status_code=404, detail={"error": f"Task {id} not found"})
     return task_to_return
+
+
+@app.post("/tasks", status_code=status.HTTP_201_CREATED)
+async def add_new_task(db: db_dependency_injection, task_title: TaskRequests):
+    if not task_title.title: raise HTTPException(status_code=400, detail={"error" : "task title is missing/null"})
+    new_task = Tasks(**task_title.model_dump())
+    db.add(new_task)
+    db.commit()
