@@ -75,10 +75,14 @@ async def health_check():
     return {"status" : "ok"}
 
 
-@app.get("/tasks")
-async def all_tasks(db: db_dependency_injection):
-    return db.query(Tasks).all()
-
+@app.get("/tasks", status_code=status.HTTP_200_OK)
+async def all_tasks(db: db_dependency_injection, done: bool | None = None):
+    if done is None:
+        return db.query(Tasks).all()
+    tasks_by_done = db.query(Tasks).filter(Tasks.done==done).all()
+    if not tasks_by_done:
+        raise HTTPException(status_code=404, detail={"error":"Task not found"})
+    return tasks_by_done
 
 @app.get("/tasks/{id}")
 async def task_by_id(db:db_dependency_injection, id: int = Path(gt=0)):

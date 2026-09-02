@@ -74,7 +74,7 @@ This project uses SQLAlchemy ORM for all CRUD operations.
 | --- | --- | --- | --- |
 | **GET** | `/` | Returns API metadata. | `200 OK` |
 | **GET** | `/health` | Returns the API health status. | `200 OK` |
-| **GET** | `/tasks` | Retrieves all tasks. | `200 OK` |
+| **GET** | `/tasks` | Retrieves all tasks, or filters tasks by completion status using the optional `done` query parameter. | `200 OK`, `404 Not Found` |
 | **GET** | `/tasks/{id}` | Retrieves a single task by ID. | `200 OK`, `404 Not Found` |
 | **POST** | `/tasks` | Creates a new task. | `201 Created`, `400 Bad Request` |
 | **PUT** | `/tasks/{id}` | Updates an existing task. | `200 OK`, `400 Bad Request`, `404 Not Found` |
